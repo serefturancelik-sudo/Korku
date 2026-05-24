@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Metro Kaçış: 7 Gün</title>
+    <style>body { margin: 0; overflow: hidden; background: #050505; }</style>
+</head>
+<body>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Sahne Kurulumu
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Yosunlu Duvar (Karanlık ve Yeşilimsi)
+        const geometry = new THREE.BoxGeometry(20, 10, 1);
+        const material = new THREE.MeshPhongMaterial({ color: 0x2d4d1e }); // Yosun rengi
+        const wall = new THREE.Mesh(geometry, material);
+        scene.add(wall);
+
+        // Işıklandırma (Loş ve Gölge)
+        const light = new THREE.PointLight(0x445544, 10, 50);
+        light.position.set(0, 0, 5);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x111111));
+
+        camera.position.z = 10;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            wall.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
