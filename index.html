@@ -1,10 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>Metro Kaçış: 7 Gün</title>
-    <style>body { margin: 0; overflow: hidden; background: #050505; }</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Metro Labirenti: 7 Gün Kaçışı</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
+        
+        /* Mobil Tarayıcı Arayüzü Taklidi */
+        #browser-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10; /* Oyunun üstünde kalacak */
+            pointer-events: none; /* Arka plana tıklandığında oyun etkilenmesin */
+        }
+        #url-bar {
+            background: #1a1a1a;
+            color: #ccc;
+            padding: 10px;
+            font-size: 14px;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #nav-icons {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            pointer-events: auto;
+        }
+        .icon { width: 30px; height: 30px; border: 2px solid #555; background: #222; }
+
+        /* Oyun İçeriği */
+        #game-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-canvas { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Oyun Arayüzü */
+        #overlay {
+            position: fixed;
+            top: 50px;
+            left: 20px;
+            color: #ff3300;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #controls {
+            position: fixed;
+            bottom: 100px;
+            right: 40px;
+            width: 100px;
+            height: 100px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 50%;
+            border: 2px solid #555;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto; /* Bu alan tıklanabilir */
+        }
+        #joystick {
+            width: 50px;
+            height: 50px;
+            background: #333;
+            border-radius: 50%;
+            position: absolute;
+        }
+    </style>
 </head>
 <body>
+
+    <!-- Mobil Tarayıcı Arayüzü -->
+    <div id="browser-ui">
+        <div id="url-bar">
+            🔒 urancelik-sudo.github.io/metro-7days
+        </div>
+        <div id="nav-icons">
+            <div class="icon"></div>
+            <div class="icon"></div>
+            <div class="icon"></div>
+        </div>
+    </div>
+
+    <!-- Oyun Konteyneri -->
+    <div id="game-container">
+        <!-- 3D Oyun Ekranı -->
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- Oyun İçi Arayüz -->
+        <div id="overlay">
+            KALAN SÜRE: 6 GÜN 23 SAAT
+        </div>
+        <div id="controls">
+            <div id="joystick"></div>
+        </div>
+    </div>
+
     <script type="importmap">
         { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
     </script>
@@ -12,31 +115,133 @@
         import * as THREE from 'three';
 
         // Sahne Kurulumu
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
+        const canvas = document.getElementById('game-canvas');
+        const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        renderer.shadowMap.enabled = true; // Gölgeler açık
 
-        // Yosunlu Duvar (Karanlık ve Yeşilimsi)
-        const geometry = new THREE.BoxGeometry(20, 10, 1);
-        const material = new THREE.MeshPhongMaterial({ color: 0x2d4d1e }); // Yosun rengi
-        const wall = new THREE.Mesh(geometry, material);
-        scene.add(wall);
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x050505, 5, 20); // Loş atmosfer için sis
 
-        // Işıklandırma (Loş ve Gölge)
-        const light = new THREE.PointLight(0x445544, 10, 50);
-        light.position.set(0, 0, 5);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x111111));
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
+        camera.position.set(0, 1.6, 5); // Oyuncu göz hizası
 
-        camera.position.z = 10;
+        // Metro Ortamı (Yosunlu, Karanlık)
+        
+        // Zemin ve Duvarlar
+        const tunnelGeometry = new THREE.BoxGeometry(10, 4, 30);
+        
+        // Yosunlu doku simülasyonu
+        const tunnelMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1a2e12, // Koyu yeşil-siyah yosun rengi
+            side: THREE.BackSide,
+            shininess: 5 // Islak-yosun parlaması
+        });
+        const tunnel = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+        tunnel.receiveShadow = true;
+        scene.add(tunnel);
 
+        // Metro Rayları
+        const tracksGeometry = new THREE.PlaneGeometry(3, 30);
+        const tracksMaterial = new THREE.MeshPhongMaterial({
+            color: 0x111111,
+            shininess: 2
+        });
+        const tracks = new THREE.Mesh(tracksGeometry, tracksMaterial);
+        tracks.rotation.x = -Math.PI / 2;
+        tracks.position.y = -1.9;
+        tracks.receiveShadow = true;
+        scene.add(tracks);
+
+        // Işıklandırma (Loş ve Gölge Yapıcı)
+        const ambientLight = new THREE.AmbientLight(0x0a0a0a, 1); // Çok karanlık
+        scene.add(ambientLight);
+
+        // Tavanda loş ışıklar
+        const lightNodes = [-10, 0, 10];
+        lightNodes.forEach(zPos => {
+            const pointLight = new THREE.PointLight(0x444422, 10, 15);
+            pointLight.position.set(0, 2, zPos);
+            pointLight.castShadow = true; // Gölge yapacak
+            pointLight.shadow.mapSize.width = 1024;
+            pointLight.shadow.mapSize.height = 1024;
+            scene.add(pointLight);
+
+            // Işık kaynağı görünümü
+            const bulb = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 8, 8),
+                new THREE.MeshBasicMaterial({color: 0x666633})
+            );
+            bulb.position.copy(pointLight.position);
+            scene.add(bulb);
+        });
+
+        // Kontrol ve Hareket
+
+        // Joystick Mantığı
+        const controlsDiv = document.getElementById('controls');
+        const joystick = document.getElementById('joystick');
+        let moveX = 0, moveY = 0;
+        let isMoving = false;
+
+        controlsDiv.addEventListener('touchstart', onTouchStart, {passive: false});
+        window.addEventListener('touchend', onTouchEnd);
+        window.addEventListener('touchmove', onTouchMove, {passive: false});
+
+        function onTouchStart(e) { e.preventDefault(); isMoving = true; }
+        function onTouchEnd() { isMoving = false; moveX = 0; moveY = 0; joystick.style.transform = `translate(0, 0)`; }
+        function onTouchMove(e) {
+            e.preventDefault();
+            if (!isMoving) return;
+            const touch = e.touches[0];
+            const rect = controlsDiv.getBoundingClientRect();
+            const centerX = rect.left + rect.width/2;
+            const centerY = rect.top + rect.height/2;
+            const limit = rect.width/2;
+
+            let deltaX = touch.clientX - centerX;
+            let deltaY = touch.clientY - centerY;
+            const distance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+            
+            if (distance > limit) {
+                deltaX = deltaX * (limit/distance);
+                deltaY = deltaY * (limit/distance);
+            }
+            joystick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+            moveX = deltaX / limit; // -1 to 1
+            moveY = deltaY / limit; // -1 to 1
+        }
+
+        // Animasyon Döngüsü
+        const velocity = 0.1;
         function animate() {
             requestAnimationFrame(animate);
-            wall.rotation.y += 0.005;
+
+            if (isMoving) {
+                // Kamera hareketi (joystick ile)
+                const moveForward = moveY * velocity;
+                const moveSideways = -moveX * velocity;
+
+                camera.translateZ(moveForward);
+                camera.translateX(moveSideways);
+
+                // Tünel sınırları
+                camera.position.x = Math.max(-4.5, Math.min(4.5, camera.position.x));
+                camera.position.z = Math.max(-14, Math.min(14, camera.position.z));
+                camera.position.y = 1.6; // Yükseklik sabit
+            }
+
             renderer.render(scene, camera);
         }
+
+        // Pencere Boyutu Değişimi
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
         animate();
     </script>
 </body>
